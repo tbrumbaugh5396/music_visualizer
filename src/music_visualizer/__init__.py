@@ -25,25 +25,54 @@ def _ensure_imports():
     global _classes_imported, AudioVisualizer, MusicVisualizerFrame, MusicVisualizerApp
     
     if not _classes_imported:
+        # Try different import strategies for robustness
         try:
+            # Strategy 1: Relative import (when used as package)
             from .music_visualizer import (
                 AudioVisualizer as _AudioVisualizer,
                 MusicVisualizerFrame as _MusicVisualizerFrame,
                 MusicVisualizerApp as _MusicVisualizerApp
             )
-            AudioVisualizer = _AudioVisualizer
-            MusicVisualizerFrame = _MusicVisualizerFrame
-            MusicVisualizerApp = _MusicVisualizerApp
-            _classes_imported = True
-        except ImportError as e:
-            raise ImportError(f"Could not import music_visualizer classes: {e}")
+        except (ImportError, SystemError, ValueError):
+            # Strategy 2: Absolute import (when running as script)
+            try:
+                from music_visualizer.music_visualizer import (
+                    AudioVisualizer as _AudioVisualizer,
+                    MusicVisualizerFrame as _MusicVisualizerFrame,
+                    MusicVisualizerApp as _MusicVisualizerApp
+                )
+            except ImportError:
+                # Strategy 3: Direct file import
+                import sys
+                import os
+                import importlib.util
+                
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                music_viz_path = os.path.join(current_dir, 'music_visualizer.py')
+                
+                if os.path.exists(music_viz_path):
+                    spec = importlib.util.spec_from_file_location("music_visualizer_module", music_viz_path)
+                    music_viz_module = importlib.util.module_from_spec(spec)
+                    spec.loader.exec_module(music_viz_module)
+                    
+                    _AudioVisualizer = music_viz_module.AudioVisualizer
+                    _MusicVisualizerFrame = music_viz_module.MusicVisualizerFrame
+                    _MusicVisualizerApp = music_viz_module.MusicVisualizerApp
+                else:
+                    raise ImportError("Could not locate music_visualizer.py file")
+        
+        AudioVisualizer = _AudioVisualizer
+        MusicVisualizerFrame = _MusicVisualizerFrame
+        MusicVisualizerApp = _MusicVisualizerApp
+        _classes_imported = True
 
 # Define what gets imported with "from music_visualizer import *"
 __all__ = [
     'AudioVisualizer',
     'MusicVisualizerFrame', 
     'MusicVisualizerApp',
-    'main'
+    'main',
+    'music_maker'
 ]
 
 def main():

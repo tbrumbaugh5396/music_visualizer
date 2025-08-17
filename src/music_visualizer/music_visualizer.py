@@ -147,6 +147,10 @@ class MusicVisualizerFrame(wx.Frame):
         open_folder_btn.Bind(wx.EVT_BUTTON, self.on_open_folder)
         controls_sizer.Add(open_folder_btn, 0, wx.ALL, 5)
 
+        music_maker_btn = wx.Button(controls_panel, label="Music Maker")
+        music_maker_btn.Bind(wx.EVT_BUTTON, self.on_music_maker)
+        controls_sizer.Add(music_maker_btn, 0, wx.ALL, 5)
+
         controls_sizer.Add(wx.StaticLine(controls_panel, style=wx.LI_VERTICAL),
                            0, wx.ALL | wx.EXPAND, 5)
 
@@ -302,6 +306,9 @@ class MusicVisualizerFrame(wx.Frame):
         file_menu.Append(wx.ID_OPEN, "&Open Audio File\tCtrl+O")
         file_menu.Append(wx.ID_ANY, "Open &Folder\tCtrl+Shift+O")
         file_menu.AppendSeparator()
+        music_maker_id = wx.NewId()
+        file_menu.Append(music_maker_id, "&Music Maker\tCtrl+M", "Launch Music Maker")
+        file_menu.AppendSeparator()
         file_menu.Append(wx.ID_EXIT, "E&xit")
         menu_bar.Append(file_menu, "&File")
 
@@ -325,6 +332,7 @@ class MusicVisualizerFrame(wx.Frame):
 
         # Bind events
         self.Bind(wx.EVT_MENU, self.on_open_file, id=wx.ID_OPEN)
+        self.Bind(wx.EVT_MENU, self.on_music_maker, id=music_maker_id)
         self.Bind(wx.EVT_MENU, self.on_exit, id=wx.ID_EXIT)
 
     def start_visualization_timer(self):
@@ -612,6 +620,48 @@ class MusicVisualizerFrame(wx.Frame):
         ax.set_aspect('equal')
         ax.set_title('Circular Spectrum', color='white')
         ax.axis('off')
+
+    def on_music_maker(self, event):
+        """Launch the Music Maker application."""
+        try:
+            # Try different import strategies to handle both package and script execution
+            launch_music_maker = None
+            
+            # Strategy 1: Relative import (when running as package)
+            try:
+                from .music_maker import launch_music_maker
+            except (ImportError, SystemError, ValueError):
+                # Strategy 2: Absolute import (when running as script)
+                try:
+                    from music_visualizer.music_maker import launch_music_maker
+                except ImportError:
+                    # Strategy 3: Direct import with path manipulation
+                    import sys
+                    import os
+                    import importlib.util
+                    
+                    # Get the directory of this file
+                    current_dir = os.path.dirname(os.path.abspath(__file__))
+                    music_maker_path = os.path.join(current_dir, 'music_maker', '__init__.py')
+                    
+                    if os.path.exists(music_maker_path):
+                        spec = importlib.util.spec_from_file_location("music_maker", music_maker_path)
+                        music_maker_module = importlib.util.module_from_spec(spec)
+                        spec.loader.exec_module(music_maker_module)
+                        launch_music_maker = music_maker_module.launch_music_maker
+                    else:
+                        raise ImportError("Could not locate music_maker module")
+            
+            if launch_music_maker:
+                launch_music_maker()
+                self.status_bar.SetStatusText("Music Maker launched")
+            else:
+                raise ImportError("Could not import launch_music_maker function")
+                
+        except Exception as e:
+            error_msg = f"Failed to launch Music Maker: {e}"
+            print(f"Debug: {error_msg}")  # Debug output
+            wx.MessageBox(error_msg, "Error", wx.OK | wx.ICON_ERROR)
 
     def on_exit(self, event):
         if self.update_timer:
