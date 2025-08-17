@@ -1,0 +1,2 @@
+rm -rf .git
+echo "Removed .git directory. Initialize a new repo with: git init && git add -A && git commit -m 'Initial commit'"
